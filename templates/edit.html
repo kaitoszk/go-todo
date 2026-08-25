@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+	<meta charset="UTF-8">
+	<title>TODO編集</title>
+</head>
+<body>
+	<h1>TODO編集</h1>
+	<form action="/edit/{{.ID}}" method="POST">
+		<!-- value="{{.Title}}" で既存のタイトルを初期値として表示する -->
+		<input type="text" name="title" value="{{.Title}}">
+		<button type="submit">更新</button>
+	</form>
+
+	<!-- 一覧に戻るリンク -->
+	<a href="/">一覧に戻る</a>
+</body>
+</html>

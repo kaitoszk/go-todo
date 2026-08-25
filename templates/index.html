@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <title>TODOアプリ</title>
+  </head>
+  <body>
+    <h1>TODO一覧</h1>
+
+    <form action="/add" method="POST">
+      <input type="text" name="title" placeholder="やることを入力" />
+      <button type="submit">追加</button>
+    </form>
+
+    <ul>
+      {{range .}}
+      <li>
+        [{{.ID}}] {{.Title}} {{if .Done}}（完了）{{else}}（未完了）{{end}}
+
+        <!-- 編集画面へのリンク -->
+        <a href="/edit/{{.ID}}">編集</a>
+
+        <!--
+				完了切り替えボタン
+				ボタン1つだけでも form で囲んで POST 送信する
+				action="/toggle/{{.ID}}" で対象IDを指定
+			-->
+        <form action="/toggle/{{.ID}}" method="POST" style="display: inline">
+          <button type="submit">
+            {{if .Done}}未完了に戻す{{else}}完了にする{{end}}
+          </button>
+        </form>
+
+        <!-- 削除ボタン（同じく form + POST） -->
+        <form action="/delete/{{.ID}}" method="POST" style="display: inline">
+          <button type="submit">削除</button>
+        </form>
+      </li>
+      {{end}}
+    </ul>
+  </body>
+</html>

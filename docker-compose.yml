@@ -1,0 +1,40 @@
+# Docker Compose のファイル
+# PostgreSQL のコンテナを1つ立ち上げる設定
+
+services:
+  # サービス名（任意の名前。これがコンテナの識別名になる）
+  db:
+    # 使用するイメージ。postgres の公式イメージのバージョン16を指定
+    image: postgres:16
+
+    # コンテナ名（docker ps で表示される名前）
+    container_name: todo-postgres
+
+    # コンテナが落ちても自動で再起動する設定
+    restart: no
+
+    # 環境変数：PostgreSQL の初期設定
+    environment:
+      POSTGRES_USER: todo_user       # DBに接続するユーザー名
+      POSTGRES_PASSWORD: todo_pass   # そのパスワード
+      POSTGRES_DB: todo_db           # 起動時に作成されるDB名
+
+    # ポートのマッピング
+    # ホスト側の5432番ポート → コンテナ側の5432番ポート
+    # Goアプリは localhost:5432 で接続できる
+    ports:
+      - "5432:5432"
+
+    # ボリュームのマウント
+    volumes:
+      # データの永続化：コンテナを消してもDBの中身が残る
+      - todo_data:/var/lib/postgresql/data
+
+      # 初期化SQL：コンテナ初回起動時に init.sql を自動実行する
+      # /docker-entrypoint-initdb.d/ に置いた .sql は自動で実行される仕様
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+# 名前付きボリュームの定義
+# これによりDBデータがホスト側に保持される
+volumes:
+  todo_data:
