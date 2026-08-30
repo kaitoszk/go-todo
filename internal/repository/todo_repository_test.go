@@ -171,13 +171,13 @@ func TestGetByID(t *testing.T) {
 		},
 		{
 			name: "異常系_該当データなし",
-			id: 999,
+			id:   999,
 			setupMock: func(mock sqlmock.Sqlmock) {
 				mock.ExpectQuery(regexp.QuoteMeta(query)).
 					WithArgs(999).
 					WillReturnError(sql.ErrNoRows)
 			},
-			want: model.Todo{},
+			want:    model.Todo{},
 			wantErr: true,
 		},
 	}
@@ -208,7 +208,64 @@ func TestGetByID(t *testing.T) {
 
 			// case2 戻り値の中身
 			if got != tt.want {
-				t.Errorf("結果が違う:\n want=%+v\n got=%+v")
+				t.Errorf("結果が違う:\n want=%+v\n got=%+v", tt.want, got)
+			}
+
+		})
+	}
+}
+
+func TestCreate(t *testing.T) {
+	const query = "INSERT INTO todos (title) VALUES ($1)"
+
+	tests := []struct {
+		name      string
+		title     string
+		setupMock func(mock sqlmock.Sqlmock)
+		wantErr   bool
+	}{
+		{
+			name:  "正常系_1件登録",
+			title: "買い物",
+			setupMock: func(mock sqlmock.Sqlmock) {
+				mock.ExpectExec(regexp.QuoteMeta(query)).
+					WithArgs("買い物").
+					WillReturnResult(sqlmock.NewResult(1, 1))
+			},
+			wantErr: false,
+		},
+		{
+			name: "異常系_Execが失敗",
+			title: "買い物",
+			setupMock: func(mock sqlmock.Sqlmock) {
+				mock.ExpectExec(regexp.QuoteMeta(query)).
+					WithArgs("買い物").
+					WillReturnError(errors.New("insert失敗"))
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db, mock, err := sqlmock.New()
+			if err != nil {
+				t.Fatalf("sqlmockの生成に失敗：%v", err)
+			}
+			defer db.Close()
+
+			defer func() {
+				if err := mock.ExpectationsWereMet(); err != nil {
+					t.Errorf("消化されていない機体がある：%v", err)
+				}
+			}()
+
+			tt.setupMock(mock)
+
+			repo := NewTodoRepository(db)
+
+			err = repo.Create(tt.title)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("wantErr=%v, got err=%v", tt.wantErr, err)
 			}
 			
 		})
