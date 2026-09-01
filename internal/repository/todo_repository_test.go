@@ -235,7 +235,7 @@ func TestCreate(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "異常系_Execが失敗",
+			name:  "異常系_Execが失敗",
 			title: "買い物",
 			setupMock: func(mock sqlmock.Sqlmock) {
 				mock.ExpectExec(regexp.QuoteMeta(query)).
@@ -267,7 +267,122 @@ func TestCreate(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Errorf("wantErr=%v, got err=%v", tt.wantErr, err)
 			}
-			
 		})
 	}
+}
+
+func TestUpdate(t *testing.T) {
+	const query = "UPDATE todos SET title = $1 WHERE id = $2"
+
+	tests := []struct {
+		name      string
+		title     string
+		id        int
+		setupMock func(mock sqlmock.Sqlmock)
+		wantErr   bool
+	}{
+		{
+			name:  "正常系_1件更新",
+			title: "買い物リスト更新",
+			id:    1,
+			setupMock: func(mock sqlmock.Sqlmock) {
+				mock.ExpectExec(regexp.QuoteMeta(query)).
+					WithArgs("買い物リスト更新", 1).
+					WillReturnResult(sqlmock.NewResult(0, 1))
+			},
+			wantErr: false,
+		},
+		{
+			name:  "異常系_Execが失敗",
+			title: "買い物リスト更新",
+			id:    1,
+			setupMock: func(mock sqlmock.Sqlmock) {
+				mock.ExpectExec(regexp.QuoteMeta(query)).
+					WithArgs("買い物リスト更新", 1).
+					WillReturnError(errors.New("update失敗"))
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db, mock, err := sqlmock.New()
+			if err != nil {
+				t.Fatalf("sqlmockの生成に失敗: %v", err)
+			}
+			defer db.Close()
+
+			defer func() {
+				if err := mock.ExpectationsWereMet(); err != nil {
+					t.Errorf("消化されていない期待がある： %v", err)
+				}
+			}()
+
+			tt.setupMock(mock)
+
+			repo := NewTodoRepository(db)
+			err = repo.Update(tt.title, tt.id)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("wantErr=%v, got err=%v", tt.wantErr, err)
+			}
+		})
+	}
+}
+
+func TestDelete(t *testing.T) {
+	const query = "DELETE FROM todos WHERE id = $1"
+
+	tests := []struct {
+		name      string
+		id        int
+		setupMock func(mock sqlmock.Sqlmock)
+		wantErr   bool
+	}{
+		{
+			name: "正常系_1件削除",
+			id:   1,
+			setupMock: func(mock sqlmock.Sqlmock) {
+				mock.ExpectExec(regexp.QuoteMeta(query)).
+					WithArgs(1).
+					WillReturnResult(sqlmock.NewResult(0, 1))
+			},
+			wantErr: false,
+		},
+		{
+			name: "異常系_Execが失敗",
+			id: 1,
+			setupMock: func(mock sqlmock.Sqlmock) {
+				mock.ExpectExec(regexp.QuoteMeta(query)).
+					WithArgs(1).
+					WillReturnError(errors.New("delete失敗"))
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db, mock, err := sqlmock.New()
+			if err != nil {
+				t.Errorf("sqlmockの生成に失敗：%v", err)
+			}
+			defer db.Close()
+			defer func() {
+				if err := mock.ExpectationsWereMet(); err != nil {
+					t.Errorf("消化されていない期待がある：%v", err)
+				}
+			}()
+
+			tt.setupMock(mock)
+
+			repo := NewTodoRepository(db)
+			err = repo.Delete(tt.id)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("wantErr=%v, got err=%v", tt.wantErr, err)
+			}
+		})
+	}
+	
 }
