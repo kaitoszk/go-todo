@@ -1,10 +1,12 @@
 // handler パッケージ：HTTPリクエストの入口（Laravel の Controller 相当）
 // 役割：リクエストの解釈 → repository に処理を依頼 → レスポンスを返す
 // SQL は書かない（DB操作は repository に委譲）
+// ここから
 package handler
 
 import (
 	"html/template"
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -35,6 +37,8 @@ type TodoRepository interface {
 type TodoHandler struct {
 	// interface型で保持する。本番は本物、テストはモックをここに差し込める。
 	repo TodoRepository
+
+	logger *slog.Logger
 }
 
 // NewTodoHandler は TodoHandler を生成するコンストラクタ
@@ -42,8 +46,8 @@ type TodoHandler struct {
 // 引数は interface型（TodoRepository）。"Accept interfaces" の実践。
 // main.go 側は本物の *repository.TodoRepository を渡せばよい
 // （本物は interface を満たすので interface型の引数にそのまま入る）。
-func NewTodoHandler(repo TodoRepository) *TodoHandler {
-	return &TodoHandler{repo: repo}
+func NewTodoHandler(repo TodoRepository, logger *slog.Logger) *TodoHandler {
+	return &TodoHandler{repo: repo, logger: logger}
 }
 
 // Index：一覧表示（GET /）

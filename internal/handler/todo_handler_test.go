@@ -2,6 +2,8 @@ package handler
 
 import (
 	"errors"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -31,6 +33,10 @@ type mockTodoRepo struct {
 	updateErr    error
 	deleteErr    error
 	toggleErr    error
+}
+
+func newTestLogger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
 }
 
 // 以下の6メソッドで、todo_handler.goのinterface内のメソッドを満たしているとみなされて
@@ -123,7 +129,7 @@ func TestAdd(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// todo_handler.goのAddメソッド
 			mock := &mockTodoRepo{createErr: tt.createErr}
-			h := NewTodoHandler(mock)
+			h := NewTodoHandler(mock, newTestLogger())
 
 			req := httptest.NewRequest(tt.method, "/add", strings.NewReader(tt.body))
 			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -157,7 +163,7 @@ func TestAdd(t *testing.T) {
 // /delete/5 id=5でDeleteが呼ばれ、303
 func TestDelete_Success(t *testing.T) {
 	mock := &mockTodoRepo{}
-	h := NewTodoHandler(mock)
+	h := NewTodoHandler(mock, newTestLogger())
 
 	req := httptest.NewRequest(http.MethodPost, "/delete/5", nil)
 	rec := httptest.NewRecorder()
@@ -182,7 +188,7 @@ func TestDelete_Success(t *testing.T) {
 
 func TestDelete_InvalidID(t *testing.T) {
 	mock := &mockTodoRepo{}
-	h := NewTodoHandler(mock)
+	h := NewTodoHandler(mock, newTestLogger())
 
 	// "abc"は数値変換できないので、strconv.Atoiがエラーを返す
 	req := httptest.NewRequest(http.MethodPost, "/delete/abc", nil)
@@ -198,7 +204,7 @@ func TestDelete_InvalidID(t *testing.T) {
 
 func TestIndex_DBError(t *testing.T) {
 	mock := &mockTodoRepo{getAllErr: errors.New("db取得失敗")}
-	h := NewTodoHandler(mock)
+	h := NewTodoHandler(mock, newTestLogger())
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
@@ -286,7 +292,7 @@ func TestEdit(t *testing.T) {
 				updateErr:  tt.updateErr,
 				getByIDErr: tt.getByIDErr,
 			}
-			h := NewTodoHandler(mock)
+			h := NewTodoHandler(mock, newTestLogger())
 
 			req := httptest.NewRequest(tt.method, tt.path, strings.NewReader(tt.body))
 			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -375,7 +381,7 @@ func TestToggle(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mock := &mockTodoRepo{toggleErr: tt.toggleErr}
-			h := NewTodoHandler(mock)
+			h := NewTodoHandler(mock, newTestLogger())
 
 			req := httptest.NewRequest(tt.method, tt.path, nil)
 			rec := httptest.NewRecorder()

@@ -3,7 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 
@@ -15,9 +15,13 @@ import (
 )
 
 func main() {
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+
+	
 	// --- 1. .env 読み込み ---
 	if err := godotenv.Load(); err != nil {
-		log.Fatal(".env file load error:", err)
+		logger.Error(".envの読み込みに失敗", slog.Any("error", err))
+		os.Exit(1)
 	}
 
 	// --- 2. DB接続 ---
@@ -33,19 +37,20 @@ func main() {
 
 	db, err := sql.Open("postgres", dbConnect)
 	if err != nil {
-		log.Fatal("sql open error:", err)
+		logger.Error("DBハンドルの生成に失敗", slog.Any("error", err))
+		os.Exit(1)
 	}
 	defer db.Close()
 
 	if err := db.Ping(); err != nil {
-		log.Fatal("db connect error:", err)
+		logger.Error("DBへの接続に失敗", slog.Any("error", err))
 	}
-	log.Println("postgres is connect OK")
+	logger.Info("DBに接続しました")
 
 	// --- 3. 依存の組み立て（DI）---
 	// db → repo → handler の順に注入する
 	repo := repository.NewTodoRepository(db)
-	h := handler.NewTodoHandler(repo)
+	h := handler.NewTodoHandler(repo, logger)
 
 	// --- 4. ルーティング ---
 	http.HandleFunc("/", h.Index)
@@ -55,6 +60,10 @@ func main() {
 	http.HandleFunc("/toggle/", h.Toggle)
 
 	// --- 5. サーバ起動 ---
-	log.Println("server is action: http://localhost:8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	logger.Info("サーバーを起動します", slog.String("addr", "http://localhost:8080"))
+
+	if err := http.ListenAndServe(":8080",nil); err != nil {
+		logger.Error("サーバーが異常終了しました", slog.Any("error", err))
+		os.Exit(1)
+	}
 }
