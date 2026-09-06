@@ -36,8 +36,7 @@ type TodoRepository interface {
 // TodoHandler は repository（の契約）を保持し、HTTPハンドラのメソッドを提供する
 type TodoHandler struct {
 	// interface型で保持する。本番は本物、テストはモックをここに差し込める。
-	repo TodoRepository
-
+	repo   TodoRepository
 	logger *slog.Logger
 }
 
@@ -54,17 +53,35 @@ func NewTodoHandler(repo TodoRepository, logger *slog.Logger) *TodoHandler {
 func (h *TodoHandler) Index(w http.ResponseWriter, r *http.Request) {
 	todos, err := h.repo.GetAll()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		// 開発者向け：エラーの中身を構造化して記録
+		h.logger.Error("failed to get todos",
+			slog.Any("error", err),
+			slog.String("handler", "Index"),
+		)
+		// 利用者向け：固定文章に→ブラウザ上でDB名などの情報を隠せる
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
 	t, err := template.ParseFiles("templates/index.html")
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		h.logger.Error("failed to parse template",
+			slog.Any("error", err),
+			slog.String("handler", "Index"),
+			slog.String("template", "index.html"),
+		)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
-	t.Execute(w, todos)
+	if err := t.Execute(w, todos); err != nil {
+		h.logger.Error("failed to render template",
+			slog.Any("error", err),
+			slog.String("handler", "Index"),
+			slog.String("template", "index.html"),
+		)
+		return
+	}
 }
 
 // Add：追加（POST /add）
@@ -81,7 +98,11 @@ func (h *TodoHandler) Add(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.repo.Create(title); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		h.logger.Error("failed to create todo",
+			slog.Any("error", err),
+			slog.String("handler", "Add"),
+		)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
@@ -93,6 +114,10 @@ func (h *TodoHandler) Edit(w http.ResponseWriter, r *http.Request) {
 	idStr := r.URL.Path[len("/edit/"):]
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
+		h.logger.Debug("invalid id in path",
+			slog.String("handler", "Edit"),
+			slog.String("path", r.URL.Path),
+		)
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
@@ -106,7 +131,12 @@ func (h *TodoHandler) Edit(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if err := h.repo.Update(title, id); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			h.logger.Error("failed to update todo",
+				slog.Any("error", err),
+				slog.String("handler", "Edit"),
+				slog.Int("todo_id", id),
+			)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
 
@@ -117,17 +147,34 @@ func (h *TodoHandler) Edit(w http.ResponseWriter, r *http.Request) {
 	// GET：編集画面の表示
 	todo, err := h.repo.GetByID(id)
 	if err != nil {
+		h.logger.Warn("failed to get todo by id",
+			slog.Any("error", err),
+			slog.String("handler", "Edit"),
+			slog.Int("todo_id", id),
+		)
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
 
 	t, err := template.ParseFiles("templates/edit.html")
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		h.logger.Error("failed to parse template",
+			slog.Any("error", err),
+			slog.String("handler", "Edit"),
+			slog.String("template", "edit.html"),
+		)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
-	t.Execute(w, todo)
+	if err := t.Execute(w, todo); err != nil {
+		h.logger.Error("failed to render template",
+			slog.Any("error", err),
+			slog.String("handler", "Edit"),
+			slog.String("template", "edit.html"),
+		)
+		return
+	}
 }
 
 // Delete：削除（POST /delete/{id}）
@@ -140,12 +187,21 @@ func (h *TodoHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	idStr := r.URL.Path[len("/delete/"):]
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
+		h.logger.Debug("invalid id in path",
+			slog.String("handler", "Delete"),
+			slog.String("path", r.URL.Path),
+		)
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
 
 	if err := h.repo.Delete(id); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		h.logger.Error("failed to delete todo",
+			slog.Any("error", err),
+			slog.String("handler", "Delete"),
+			slog.Int("todo_id", id),
+		)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
@@ -164,6 +220,11 @@ func (h *TodoHandler) Toggle(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(idStr)
 	// 条件：数値に変換できないものがURLにあった場合true
 	if err != nil {
+		h.logger.Debug("invalid id in path",
+			slog.String("handler", "Toggle"),
+			slog.String("path", r.URL.Path),
+		)
+
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
@@ -171,7 +232,13 @@ func (h *TodoHandler) Toggle(w http.ResponseWriter, r *http.Request) {
 	// 条件：リポジトリのToggleメソッドでerr（idがない）だったら
 	// リポジトリのToggleメソッドが実行され、問題なければ、あちらでreturnされる
 	if err := h.repo.Toggle(id); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		h.logger.Error("failed to toggle todo",
+			slog.Any("error", err),
+			slog.String("handler", "Toggle"),
+			slog.Int("todo_id", id),
+		)
+
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
