@@ -415,7 +415,7 @@ func TestToggle(t *testing.T) {
 // ブラウザ；errの中身が漏れていないか
 // ログ：errの中身が記録されているか
 func TestErrorResponse_DoesNotLeakDetails(t *testing.T) {
-	const dbErrMsg = "pq: relation \"todos\" does not exist"
+	const dbErrMsg = "pq: password authentication failed for user"
 
 	tests := []struct {
 		name    string
