@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"bytes"
 	"errors"
 	"io"
 	"log/slog"
@@ -405,6 +406,106 @@ func TestToggle(t *testing.T) {
 				if gotLocation != tt.wantLocation {
 					t.Errorf("Location: want=%s, got=%s", tt.wantLocation, gotLocation)
 				}
+			}
+		})
+	}
+}
+
+// 2つのテストをしている
+// ブラウザ；errの中身が漏れていないか
+// ログ：errの中身が記録されているか
+func TestErrorResponse_DoesNotLeakDetails(t *testing.T) {
+	const dbErrMsg = "pq: relation \"todos\" does not exist"
+
+	tests := []struct {
+		name    string
+		newMock func(err error) *mockTodoRepo
+		call    func(h *TodoHandler, w http.ResponseWriter, r *http.Request)
+		req     func() *http.Request
+	}{
+		{
+			name: "Index_GetAll失敗",
+			newMock: func(err error) *mockTodoRepo {
+				return &mockTodoRepo{getAllErr: err}
+			},
+			call: func(h *TodoHandler, w http.ResponseWriter, r *http.Request) {
+				h.Index(w, r)
+			},
+			req: func() *http.Request {
+				return httptest.NewRequest(http.MethodGet, "/", nil)
+			},
+		},
+		{
+			name: "Add_Create失敗",
+			newMock: func(err error) *mockTodoRepo {
+				return &mockTodoRepo{createErr: err}
+			},
+			call: func(h *TodoHandler, w http.ResponseWriter, r *http.Request) {
+				h.Add(w, r)
+			},
+			req: func() *http.Request {
+				r := httptest.NewRequest(http.MethodPost, "/add", strings.NewReader("title=shopping"))
+				r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+				return r
+			},
+		},
+		{
+			name: "Delete_Delete失敗",
+			newMock: func(err error) *mockTodoRepo {
+				return &mockTodoRepo{deleteErr: err}
+			},
+			call: func(h *TodoHandler, w http.ResponseWriter, r *http.Request) {
+				h.Delete(w, r)
+			},
+			req: func() *http.Request {
+				return httptest.NewRequest(http.MethodPost, "/delete/1", nil)
+			},
+		},
+		{
+			name: "Toggle_Toggle失敗",
+			newMock: func(err error) *mockTodoRepo {
+				return &mockTodoRepo{toggleErr: err}
+			},
+			call: func(h *TodoHandler, w http.ResponseWriter, r *http.Request) {
+				h.Toggle(w, r)
+			},
+			req: func() *http.Request {
+				return httptest.NewRequest(http.MethodPost, "/toggle/1", nil)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			logger := slog.New(slog.NewJSONHandler(&buf, nil))
+
+			mock := tt.newMock(errors.New(dbErrMsg))
+			h := NewTodoHandler(mock, logger)
+			rec := httptest.NewRecorder()
+
+			tt.call(h, rec, tt.req())
+
+			if rec.Code != http.StatusInternalServerError {
+				t.Errorf("status: want=500, got=%d", rec.Code)
+			}
+
+			body := rec.Body.String()
+			if strings.Contains(body, dbErrMsg) {
+				t.Errorf("エラーの中身がレスポンスに漏れている：body=%q", body)
+			}
+
+			if !strings.Contains(body, "Internal Server Error") {
+				t.Errorf("固定文章が返っていない：body=%q", body)
+			}
+
+			logOutput := buf.String()
+			if !strings.Contains(logOutput, dbErrMsg) {
+				t.Errorf("ログにエラーの中身が記録されていない：log=%q", logOutput)
+			}
+
+			if !strings.Contains(logOutput, `"level":"ERROR"`) {
+				t.Errorf("ログレベルがERRORではない：log=%q", logOutput)
 			}
 		})
 	}
