@@ -397,7 +397,7 @@ func TestToggle(t *testing.T) {
 	}{
 		{
 			name: "正常系_1件更新",
-			id: 1,
+			id:   1,
 			setupMock: func(mock sqlmock.Sqlmock) {
 				mock.ExpectExec(regexp.QuoteMeta(query)).
 					WithArgs(1).
@@ -407,7 +407,7 @@ func TestToggle(t *testing.T) {
 		},
 		{
 			name: "異常系_Execが失敗",
-			id: 1,
+			id:   1,
 			setupMock: func(mock sqlmock.Sqlmock) {
 				mock.ExpectExec(regexp.QuoteMeta(query)).
 					WithArgs(1).
@@ -430,7 +430,6 @@ func TestToggle(t *testing.T) {
 					t.Errorf("消化されていない期待がある: %v", err)
 				}
 			}()
-
 
 			tt.setupMock(mock)
 

@@ -5,6 +5,7 @@
 package handler
 
 import (
+	"context"
 	"html/template"
 	"log/slog"
 	"net/http"
@@ -25,12 +26,12 @@ import (
 //	何も書き換えなくても自動でこの interface を満たす（Goの構造的型付け）。
 //	同じシグネチャのモックを作れば、それも自動で満たす → テストで差し替え可能。
 type TodoRepository interface {
-	GetAll() ([]model.Todo, error)
-	GetByID(id int) (model.Todo, error)
-	Create(title string) error
-	Update(title string, id int) error
-	Delete(id int) error
-	Toggle(id int) error
+	GetAll(ctx context.Context) ([]model.Todo, error)
+	GetByID(ctx context.Context, id int) (model.Todo, error)
+	Create(ctx context.Context, title string) error
+	Update(ctx context.Context, title string, id int) error
+	Delete(ctx context.Context, id int) error
+	Toggle(ctx context.Context, id int) error
 }
 
 // TodoHandler は repository（の契約）を保持し、HTTPハンドラのメソッドを提供する
@@ -51,7 +52,9 @@ func NewTodoHandler(repo TodoRepository, logger *slog.Logger) *TodoHandler {
 
 // Index：一覧表示（GET /）
 func (h *TodoHandler) Index(w http.ResponseWriter, r *http.Request) {
-	todos, err := h.repo.GetAll()
+	ctx := r.Context()
+	
+	todos, err := h.repo.GetAll(ctx)
 	if err != nil {
 		// 開発者向け：エラーの中身を構造化して記録
 		h.logger.Error("failed to get todos",
@@ -97,7 +100,9 @@ func (h *TodoHandler) Add(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.repo.Create(title); err != nil {
+	ctx := r.Context()
+
+	if err := h.repo.Create(ctx, title); err != nil {
 		h.logger.Error("failed to create todo",
 			slog.Any("error", err),
 			slog.String("handler", "Add"),
@@ -122,6 +127,8 @@ func (h *TodoHandler) Edit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	ctx := r.Context()
+
 	// POST：更新処理
 	if r.Method == http.MethodPost {
 		title := r.FormValue("title")
@@ -130,7 +137,8 @@ func (h *TodoHandler) Edit(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if err := h.repo.Update(title, id); err != nil {
+
+		if err := h.repo.Update(ctx, title, id); err != nil {
 			h.logger.Error("failed to update todo",
 				slog.Any("error", err),
 				slog.String("handler", "Edit"),
@@ -145,7 +153,7 @@ func (h *TodoHandler) Edit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// GET：編集画面の表示
-	todo, err := h.repo.GetByID(id)
+	todo, err := h.repo.GetByID(ctx, id)
 	if err != nil {
 		h.logger.Warn("failed to get todo by id",
 			slog.Any("error", err),
@@ -195,7 +203,9 @@ func (h *TodoHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.repo.Delete(id); err != nil {
+	ctx := r.Context()
+
+	if err := h.repo.Delete(ctx, id); err != nil {
 		h.logger.Error("failed to delete todo",
 			slog.Any("error", err),
 			slog.String("handler", "Delete"),
@@ -229,9 +239,11 @@ func (h *TodoHandler) Toggle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	ctx := r.Context()
+
 	// 条件：リポジトリのToggleメソッドでerr（idがない）だったら
 	// リポジトリのToggleメソッドが実行され、問題なければ、あちらでreturnされる
-	if err := h.repo.Toggle(id); err != nil {
+	if err := h.repo.Toggle(ctx, id); err != nil {
 		h.logger.Error("failed to toggle todo",
 			slog.Any("error", err),
 			slog.String("handler", "Toggle"),
