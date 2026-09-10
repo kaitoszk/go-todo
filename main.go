@@ -51,12 +51,15 @@ func main() {
 	repo := repository.NewTodoRepository(db)
 	h := handler.NewTodoHandler(repo, logger)
 
+	mux := http.NewServeMux()
+
 	// --- 4. ルーティング ---
-	http.HandleFunc("/", h.Index)
-	http.HandleFunc("/add", h.Add)
-	http.HandleFunc("/edit/", h.Edit)
-	http.HandleFunc("/delete/", h.Delete)
-	http.HandleFunc("/toggle/", h.Toggle)
+	mux.HandleFunc("GET /{$}", h.Index)
+	mux.HandleFunc("POST /add", h.Add)
+	mux.HandleFunc("GET /edit/{id}", h.EditForm)
+	mux.HandleFunc("POST /edit/{id}", h.Update)
+	mux.HandleFunc("POST /delete/{id}", h.Delete)
+	mux.HandleFunc("POST /toggle/{id}", h.Toggle)
 
 	// --- 5. サーバ起動 ---
 	logger.Info("サーバーを起動します", slog.String("addr", "http://localhost:8080"))
