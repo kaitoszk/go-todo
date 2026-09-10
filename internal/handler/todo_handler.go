@@ -53,7 +53,7 @@ func NewTodoHandler(repo TodoRepository, logger *slog.Logger) *TodoHandler {
 // Index：一覧表示（GET /）
 func (h *TodoHandler) Index(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	
+
 	todos, err := h.repo.GetAll(ctx)
 	if err != nil {
 		// 開発者向け：エラーの中身を構造化して記録
@@ -136,7 +136,6 @@ func (h *TodoHandler) Edit(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, "/", http.StatusSeeOther)
 			return
 		}
-
 
 		if err := h.repo.Update(ctx, title, id); err != nil {
 			h.logger.Error("failed to update todo",

@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"reflect"
@@ -50,7 +51,7 @@ func TestGetAll_Success(t *testing.T) {
 	repo := NewTodoRepository(db)
 	// todo_repository.goのGetAllメソッドを実行
 	// gotには、上記AddRowでチェーンした内容が入っている
-	got, err := repo.GetAll()
+	got, err := repo.GetAll(context.Background())
 
 	// 検証1：エラーが返っていないか
 	if err != nil {
@@ -131,7 +132,7 @@ func TestGetAll_Errors(t *testing.T) {
 
 			// TODO
 			repo := NewTodoRepository(db)
-			got, err := repo.GetAll()
+			got, err := repo.GetAll(context.Background())
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("wantErr=%v, got err=%v", tt.wantErr, err)
@@ -199,7 +200,7 @@ func TestGetByID(t *testing.T) {
 			tt.setupMock(mock)
 
 			repo := NewTodoRepository(db)
-			got, err := repo.GetByID(tt.id)
+			got, err := repo.GetByID(context.Background(), tt.id)
 
 			// case1 エラーの有無
 			if (err != nil) != tt.wantErr {
@@ -263,7 +264,7 @@ func TestCreate(t *testing.T) {
 
 			repo := NewTodoRepository(db)
 
-			err = repo.Create(tt.title)
+			err = repo.Create(context.Background(), tt.title)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("wantErr=%v, got err=%v", tt.wantErr, err)
 			}
@@ -322,7 +323,7 @@ func TestUpdate(t *testing.T) {
 			tt.setupMock(mock)
 
 			repo := NewTodoRepository(db)
-			err = repo.Update(tt.title, tt.id)
+			err = repo.Update(context.Background(), tt.title, tt.id)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("wantErr=%v, got err=%v", tt.wantErr, err)
@@ -378,7 +379,7 @@ func TestDelete(t *testing.T) {
 			tt.setupMock(mock)
 
 			repo := NewTodoRepository(db)
-			err = repo.Delete(tt.id)
+			err = repo.Delete(context.Background(), tt.id)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("wantErr=%v, got err=%v", tt.wantErr, err)
 			}
@@ -434,7 +435,7 @@ func TestToggle(t *testing.T) {
 			tt.setupMock(mock)
 
 			repo := NewTodoRepository(db)
-			err = repo.Toggle(tt.id)
+			err = repo.Toggle(context.Background(), tt.id)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("wantErr=%v, got err=%v", tt.wantErr, err)

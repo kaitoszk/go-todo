@@ -4,5 +4,5 @@ type Todo struct {
 	ID        int
 	Title     string
 	Done      bool
-	CreatedAt string 
+	CreatedAt string
 }

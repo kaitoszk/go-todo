@@ -93,6 +93,6 @@ func (r *TodoRepository) Delete(ctx context.Context, id int) error {
 
 // Toggle：完了フラグ反転
 func (r *TodoRepository) Toggle(ctx context.Context, id int) error {
-	_, err := r.db.ExecContext(ctx,"UPDATE todos SET done = NOT done WHERE id = $1", id)
+	_, err := r.db.ExecContext(ctx, "UPDATE todos SET done = NOT done WHERE id = $1", id)
 	return err
 }

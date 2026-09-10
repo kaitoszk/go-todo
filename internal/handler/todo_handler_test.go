@@ -2,6 +2,7 @@ package handler
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"log/slog"
@@ -42,34 +43,34 @@ func newTestLogger() *slog.Logger {
 
 // 以下の6メソッドで、todo_handler.goのinterface内のメソッドを満たしているとみなされて
 // ダックタイピング的に生合成が取れている状態になる
-func (m *mockTodoRepo) GetAll() ([]model.Todo, error) {
+func (m *mockTodoRepo) GetAll(ctx context.Context) ([]model.Todo, error) {
 	return m.getAllResult, m.getAllErr
 }
 
-func (m *mockTodoRepo) GetByID(id int) (model.Todo, error) {
+func (m *mockTodoRepo) GetByID(ctx context.Context, id int) (model.Todo, error) {
 	return model.Todo{ID: id, Title: "dummy"}, m.getByIDErr
 }
 
-func (m *mockTodoRepo) Create(title string) error {
+func (m *mockTodoRepo) Create(ctx context.Context, title string) error {
 	m.createCalled = true
 	m.createTitle = title
 	return m.createErr
 }
 
-func (m *mockTodoRepo) Update(title string, id int) error {
+func (m *mockTodoRepo) Update(ctx context.Context, title string, id int) error {
 	m.updateCalled = true
 	m.updateTitle = title
 	m.updateID = id
 	return m.updateErr
 }
 
-func (m *mockTodoRepo) Delete(id int) error {
+func (m *mockTodoRepo) Delete(ctx context.Context, id int) error {
 	m.deleteCalled = true
 	m.deleteID = id
 	return m.deleteErr
 }
 
-func (m *mockTodoRepo) Toggle(id int) error {
+func (m *mockTodoRepo) Toggle(ctx context.Context, id int) error {
 	m.toggleCalled = true
 	m.toggleID = id
 	return m.toggleErr

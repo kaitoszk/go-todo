@@ -17,7 +17,6 @@ import (
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 
-	
 	// --- 1. .env 読み込み ---
 	if err := godotenv.Load(); err != nil {
 		logger.Error(".envの読み込みに失敗", slog.Any("error", err))
@@ -62,7 +61,7 @@ func main() {
 	// --- 5. サーバ起動 ---
 	logger.Info("サーバーを起動します", slog.String("addr", "http://localhost:8080"))
 
-	if err := http.ListenAndServe(":8080",nil); err != nil {
+	if err := http.ListenAndServe(":8080", nil); err != nil {
 		logger.Error("サーバーが異常終了しました", slog.Any("error", err))
 		os.Exit(1)
 	}
